@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: douyin
+      POSTGRES_PASSWORD: douyin
+      POSTGRES_DB: douyin_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U douyin -d douyin_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Evil0ctal 薄桥接：见 bridge/README.md；UPSTREAM 需指向本机已启动的上游（默认 19001）
+  bridge:
+    build:
+      context: ./bridge
+      dockerfile: Dockerfile
+    ports:
+      - "19000:9000"
+    environment:
+      # 双 Evil0ctal 轮询：:19001（douyin_upstream）与 :19002（douyin_upstream_b），各挂载不同 Cookie
+      UPSTREAM_BASE_URLS: "http://host.docker.internal:19001,http://host.docker.internal:19002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      - sh
+      - -c
+      - uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $${UVICORN_WORKERS:-2}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/douyin_app
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: change-me-in-production-use-long-random-string
+      # 真实数据：经 bridge 调 Evil0ctal（本机默认 19001，见 bridge 服务 UPSTREAM_BASE_URL）
+      DOUYIN_ADAPTER: http
+      DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
+      DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
+      CORS_ORIGINS: http://localhost:5174,http://127.0.0.1:5174
+      AB_BASE_URL: http://host.docker.internal:3847
+      AB_LOGIN_PATH: /login.html
+      AB_APP_ID: textloading
+      AB_CREDITS_COST_SYNC: "3"
+      UVICORN_WORKERS: "2"
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "30"
+      RATE_LIMIT_SYNC_PER_USER_PER_MINUTE: "30"
+      DOUYIN_FETCH_MAX_CONCURRENT: "8"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "18080:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bridge:
+        condition: service_started
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: arq app.workers.settings.WorkerSettings
+    environment:
+      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/douyin_app
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: change-me-in-production-use-long-random-string
+      DOUYIN_ADAPTER: http
+      DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
+      DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
+      AB_BASE_URL: http://host.docker.internal:3847
+      AB_LOGIN_PATH: /login.html
+      AB_APP_ID: textloading
+      AB_CREDITS_COST_SYNC: "3"
+      # bridge/上游偶发 502 时 Worker 内对单次 GET 重试（见 app/adapters/http_proxy.py）
+      DOUYIN_HTTP_MAX_ATTEMPTS: "5"
+      DOUYIN_HTTP_RETRY_BACKOFF_BASE: "0.5"
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "30"
+      DOUYIN_FETCH_MAX_CONCURRENT: "8"
+      WORKER_MAX_JOBS: "8"
+      WORKER_JOB_TIMEOUT: "900"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bridge:
+        condition: service_started
+
+volumes:
+  pg_data:
