@@ -1,4 +1,8 @@
 # 环境变量来自 ./deploy/textloading.env（生产可用 ln -s 指向 /etc/textloading/textloading.env）
+#
+# PostgreSQL：compose 内 postgres 默认不在宿主机映射端口，避免与「统一基建」宿主机 PostgreSQL（常见占用 :5432）冲突。
+# 生产若 DATABASE_URL 指向 host.docker.internal（宿主库 textloading_app），此容器仅为闲置依赖时可日后用 profile 关掉；
+# 仅用 compose 内库时，服务间仍通过主机名 postgres:5432 访问。
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,8 +10,6 @@ services:
       POSTGRES_USER: douyin
       POSTGRES_PASSWORD: douyin
       POSTGRES_DB: textloading_app
-    ports:
-      - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
