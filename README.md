@@ -35,7 +35,7 @@ docker compose up --build
 
 **启用真实数据时的前提（当前 compose 默认已接 `http` + `bridge`）**：请先在宿主机 **19001** 启动 [Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API) 并配置 Cookie；否则同步任务会在解析抖音号时失败。若需改上游端口，请同步修改 `bridge` 服务的 `UPSTREAM_BASE_URL`。
 
-- API：<http://localhost:18080>（文档：<http://localhost:18080/docs>，就绪：<http://localhost:18080/ready>）
+- API：<http://localhost:18180>（文档：<http://localhost:18180/docs>，就绪：<http://localhost:18180/ready>；端口以 `docker-compose.yml` 中映射为准）
 - **bridge**（可选）：宿主机端口见 `docker-compose.yml` 中映射（默认 **19190**，对应健康检查 <http://localhost:19190/health>），容器内端口 9000；默认请求本机 **`UPSTREAM_BASE_URL=http://host.docker.internal:19001`** 上的 Evil0ctal 上游。**若本机 19001 已被占用（例如 MinIO），请把 Evil0ctal 改到其他端口并同步修改 compose 里 bridge 的 `UPSTREAM_BASE_URL`。**
 - Postgres：`localhost:5432`（用户/库：`douyin` / `douyin_app`）
 - Redis：`localhost:6379`
@@ -48,7 +48,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开前端：<http://localhost:5174>。`frontend/.env.development` 中 `VITE_API_BASE=http://localhost:18080` 需与 Docker 映射的 API 宿主机端口一致。
+浏览器打开前端：<http://localhost:5174>。`frontend/.env.development` 中 `VITE_API_BASE` 需与 Docker 映射的 API 宿主机端口一致（默认 compose 为 **18180**）。
 
 ## 真实数据从零跑通（详细步骤）
 
@@ -127,8 +127,8 @@ docker compose up -d --build
 | 上游文档 | <http://localhost:19001/docs> | 能打开 Swagger |
 | bridge 健康检查 | <http://localhost:19190/health>（端口以 compose 为准） | 返回正常 |
 | 试解析（把 `抖音号` 换成真实 unique_id） | <http://localhost:19190/douyin/resolve?unique_id=抖音号> | JSON 含 `sec_uid`；若上游未起或 Cookie 无效会 502/错误体 |
-| 本 API 演示模式关闭 | <http://localhost:18080/config/public> | `demo_mode` 为 **`false`** |
-| 依赖就绪 | <http://localhost:18080/ready> | 200 |
+| 本 API 演示模式关闭 | <http://localhost:18180/config/public> | `demo_mode` 为 **`false`** |
+| 依赖就绪 | <http://localhost:18180/ready> | 200 |
 
 ### 4. 前端操作
 

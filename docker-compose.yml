@@ -63,8 +63,9 @@ services:
       DB_MAX_OVERFLOW: "5"
       RATE_LIMIT_SYNC_PER_USER_PER_MINUTE: "30"
       DOUYIN_FETCH_MAX_CONCURRENT: "4"
+    # 若宿主机 18080 已被占用，改用其它映射端口；生产 Nginx 反代时需指向此处端口
     ports:
-      - "18080:8000"
+      - "18180:8000"
     depends_on:
       postgres:
         condition: service_healthy
