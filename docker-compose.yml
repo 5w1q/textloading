@@ -18,8 +18,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    # 宿主机映射避开与其它 Redis（6379）；compose 内服务仍访问 redis:6379，无需改 REDIS_URL
     ports:
-      - "6379:6379"
+      - "16379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

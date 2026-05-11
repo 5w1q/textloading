@@ -37,8 +37,8 @@ docker compose up --build
 
 - API：<http://localhost:18180>（文档：<http://localhost:18180/docs>，就绪：<http://localhost:18180/ready>；端口以 `docker-compose.yml` 中映射为准）
 - **bridge**（可选）：宿主机端口见 `docker-compose.yml` 中映射（默认 **19190**，对应健康检查 <http://localhost:19190/health>），容器内端口 9000；默认请求本机 **`UPSTREAM_BASE_URL=http://host.docker.internal:19001`** 上的 Evil0ctal 上游。**若本机 19001 已被占用（例如 MinIO），请把 Evil0ctal 改到其他端口并同步修改 compose 里 bridge 的 `UPSTREAM_BASE_URL`。**
-- Postgres：`localhost:5432`（用户/库：`douyin` / `douyin_app`）
-- Redis：`localhost:6379`
+- Postgres：`localhost:5432`（端口见 compose；用户/库：`douyin` / **`textloading_app`**）
+- Redis：`localhost:16379`（宿主机映射见 compose；与同机其它 6379 不冲突）
 
 前端在本地开发（默认连本机 API）：
 
