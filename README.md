@@ -23,7 +23,7 @@
 
 就绪探针：`GET /ready`（会 `PING` Redis）。
 
-**调参提示**：总 DB 连接约等于 `UVICORN_WORKERS × (DB_POOL_SIZE + DB_MAX_OVERFLOW) + worker副本数 × (...)`，不要超过 Postgres `max_connections`。许可池大小变更后若需重建，可在维护窗口对 Redis 执行 `DEL douyin:fetch_permits` 后重启服务（见 `app/douyin_pool.py`）。
+**调参提示**：总 DB 连接约等于 `UVICORN_WORKERS × (DB_POOL_SIZE + DB_MAX_OVERFLOW) + worker副本数 × (...)`，不要超过 Postgres `max_connections`。许可池大小变更后若需重建，可在维护窗口对 Redis 执行 `DEL douyin:fetch_permits`（若配置了 `REDIS_KEY_PREFIX`，则为 `{前缀}:douyin:fetch_permits`，例如统一基建默认 `tl:` 时为 `tl:douyin:fetch_permits`）后重启服务（见 `app/douyin_pool.py`）。
 
 ## 快速启动（Docker）
 

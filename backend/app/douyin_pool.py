@@ -7,7 +7,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
-PERMITS_KEY = "douyin:fetch_permits"
+
+def _permits_redis_key() -> str:
+    from app.config import get_settings
+
+    p = get_settings().redis_key_prefix.strip().rstrip(":")
+    tail = "douyin:fetch_permits"
+    return f"{p}:{tail}" if p else tail
 
 _INIT_LUA = """
 local len = redis.call('LLEN', KEYS[1])
@@ -24,15 +30,16 @@ return redis.call('LLEN', KEYS[1])
 async def init_douyin_permit_pool(redis: "Redis", pool_size: int) -> None:
     if pool_size <= 0:
         return
-    await redis.eval(_INIT_LUA, 1, PERMITS_KEY, str(pool_size))
+    await redis.eval(_INIT_LUA, 1, _permits_redis_key(), str(pool_size))
 
 
 @asynccontextmanager
 async def douyin_fetch_slot(redis: "Redis", wait_timeout: float = 120.0) -> AsyncIterator[None]:
-    popped = await redis.blpop(PERMITS_KEY, timeout=wait_timeout)
+    key = _permits_redis_key()
+    popped = await redis.blpop(key, timeout=wait_timeout)
     if popped is None:
         raise TimeoutError("等待抖音抓取许可超时，请稍后重试")
     try:
         yield
     finally:
-        await redis.lpush(PERMITS_KEY, "1")
+        await redis.lpush(key, "1")

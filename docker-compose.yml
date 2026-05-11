@@ -4,13 +4,14 @@ services:
     environment:
       POSTGRES_USER: douyin
       POSTGRES_PASSWORD: douyin
-      POSTGRES_DB: douyin_app
+      # 与 unified-infra-optimization-plan：库名 textloading_app（新建 volume 时生效）
+      POSTGRES_DB: textloading_app
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U douyin -d douyin_app"]
+      test: ["CMD-SHELL", "pg_isready -U douyin -d textloading_app"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -47,19 +48,20 @@ services:
       - -c
       - uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $${UVICORN_WORKERS:-2}
     environment:
-      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/douyin_app
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/textloading_app
+      # unified-infra：Redis DB index 2 + key 前缀 tl:
+      REDIS_URL: redis://redis:6379/2
+      REDIS_KEY_PREFIX: "tl:"
       JWT_SECRET: change-me-in-production-use-long-random-string
-      # 真实数据：经 bridge 调 Evil0ctal（本机默认 19001，见 bridge 服务 UPSTREAM_BASE_URL）
       DOUYIN_ADAPTER: http
       DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
       DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
-      CORS_ORIGINS: http://localhost:5174,http://127.0.0.1:5174
+      CORS_ORIGINS: https://hub.sayhi-ab.asia,http://localhost:5174,http://127.0.0.1:5174
       UVICORN_WORKERS: "2"
-      DB_POOL_SIZE: "10"
-      DB_MAX_OVERFLOW: "30"
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "5"
       RATE_LIMIT_SYNC_PER_USER_PER_MINUTE: "30"
-      DOUYIN_FETCH_MAX_CONCURRENT: "8"
+      DOUYIN_FETCH_MAX_CONCURRENT: "4"
     ports:
       - "18080:8000"
     depends_on:
@@ -76,19 +78,19 @@ services:
       dockerfile: Dockerfile
     command: arq app.workers.settings.WorkerSettings
     environment:
-      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/douyin_app
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/textloading_app
+      REDIS_URL: redis://redis:6379/2
+      REDIS_KEY_PREFIX: "tl:"
       JWT_SECRET: change-me-in-production-use-long-random-string
       DOUYIN_ADAPTER: http
       DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
       DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
-      # bridge/上游偶发 502 时 Worker 内对单次 GET 重试（见 app/adapters/http_proxy.py）
       DOUYIN_HTTP_MAX_ATTEMPTS: "5"
       DOUYIN_HTTP_RETRY_BACKOFF_BASE: "0.5"
-      DB_POOL_SIZE: "10"
-      DB_MAX_OVERFLOW: "30"
-      DOUYIN_FETCH_MAX_CONCURRENT: "8"
-      WORKER_MAX_JOBS: "8"
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "5"
+      DOUYIN_FETCH_MAX_CONCURRENT: "4"
+      WORKER_MAX_JOBS: "2"
       WORKER_JOB_TIMEOUT: "900"
     depends_on:
       postgres:

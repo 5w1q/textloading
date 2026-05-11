@@ -7,11 +7,19 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
 
 
+def _rate_limit_key(user_id: int, window: int) -> str:
+    from app.config import get_settings
+
+    p = get_settings().redis_key_prefix.strip().rstrip(":")
+    tail = f"rl:sync:user:{user_id}:{window}"
+    return f"{p}:{tail}" if p else tail
+
+
 async def check_user_sync_rate_limit(redis: "Redis", user_id: int, max_per_minute: int) -> None:
     if max_per_minute <= 0:
         return
     window = int(time.time() // 60)
-    key = f"rl:sync:user:{user_id}:{window}"
+    key = _rate_limit_key(user_id, window)
     n = await redis.incr(key)
     if n == 1:
         await redis.expire(key, 120)

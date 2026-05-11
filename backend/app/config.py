@@ -6,8 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+asyncpg://douyin:douyin@localhost:5432/douyin_app"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+asyncpg://douyin:douyin@localhost:5432/textloading_app"
+    redis_url: str = "redis://localhost:6379/2"
+    #: 共用 Redis 实例时的 key 前缀（统一基建约定 textloading 使用 tl:）
+    redis_key_prefix: str = ""
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
@@ -26,8 +28,8 @@ class Settings(BaseSettings):
     max_new_links_per_task: int = 100
 
     # --- 高并发 / 资源隔离 ---
-    db_pool_size: int = 10
-    db_max_overflow: int = 30
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
     db_pool_timeout: int = 30
     db_pool_recycle: int = 1800
 
