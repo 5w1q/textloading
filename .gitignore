@@ -4,6 +4,8 @@ __pycache__/
 venv/
 .env
 *.egg-info/
+deploy/textloading.env
+
 dist/
 node_modules/
 frontend/dist/

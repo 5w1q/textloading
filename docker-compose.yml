@@ -1,10 +1,10 @@
+# 环境变量来自 ./deploy/textloading.env（生产可用 ln -s 指向 /etc/textloading/textloading.env）
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: douyin
       POSTGRES_PASSWORD: douyin
-      # 与 unified-infra-optimization-plan：库名 textloading_app（新建 volume 时生效）
       POSTGRES_DB: textloading_app
     ports:
       - "5432:5432"
@@ -18,7 +18,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    # 宿主机映射避开与其它 Redis（6379）；compose 内服务仍访问 redis:6379，无需改 REDIS_URL
     ports:
       - "16379:6379"
     healthcheck:
@@ -27,17 +26,14 @@ services:
       timeout: 3s
       retries: 10
 
-  # Evil0ctal 薄桥接：见 bridge/README.md；UPSTREAM 需指向本机已启动的上游（默认 19001）
   bridge:
     build:
       context: ./bridge
       dockerfile: Dockerfile
-    # 宿主机端口勿与同机 MinIO（常见 19000/19001）等冲突；API/worker 仍通过服务名 bridge:9000 访问，无需改 DOUYIN_HTTP_*
+    env_file:
+      - ./deploy/textloading.env
     ports:
       - "19190:9000"
-    environment:
-      # 默认单实例 Evil0ctal（宿主机 :19001）。需双 Cookie 轮询时再设置 UPSTREAM_BASE_URLS（见 bridge/README.md）
-      UPSTREAM_BASE_URL: "http://host.docker.internal:19001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -45,26 +41,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./deploy/textloading.env
     command:
       - sh
       - -c
       - uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $${UVICORN_WORKERS:-2}
-    environment:
-      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/textloading_app
-      # unified-infra：Redis DB index 2 + key 前缀 tl:
-      REDIS_URL: redis://redis:6379/2
-      REDIS_KEY_PREFIX: "tl:"
-      JWT_SECRET: change-me-in-production-use-long-random-string
-      DOUYIN_ADAPTER: http
-      DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
-      DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
-      CORS_ORIGINS: https://hub.sayhi-ab.asia,http://localhost:5174,http://127.0.0.1:5174
-      UVICORN_WORKERS: "2"
-      DB_POOL_SIZE: "5"
-      DB_MAX_OVERFLOW: "5"
-      RATE_LIMIT_SYNC_PER_USER_PER_MINUTE: "30"
-      DOUYIN_FETCH_MAX_CONCURRENT: "4"
-    # 若宿主机 18080 已被占用，改用其它映射端口；生产 Nginx 反代时需指向此处端口
     ports:
       - "18180:8000"
     depends_on:
@@ -79,22 +61,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./deploy/textloading.env
     command: arq app.workers.settings.WorkerSettings
-    environment:
-      DATABASE_URL: postgresql+asyncpg://douyin:douyin@postgres:5432/textloading_app
-      REDIS_URL: redis://redis:6379/2
-      REDIS_KEY_PREFIX: "tl:"
-      JWT_SECRET: change-me-in-production-use-long-random-string
-      DOUYIN_ADAPTER: http
-      DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
-      DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
-      DOUYIN_HTTP_MAX_ATTEMPTS: "5"
-      DOUYIN_HTTP_RETRY_BACKOFF_BASE: "0.5"
-      DB_POOL_SIZE: "5"
-      DB_MAX_OVERFLOW: "5"
-      DOUYIN_FETCH_MAX_CONCURRENT: "4"
-      WORKER_MAX_JOBS: "2"
-      WORKER_JOB_TIMEOUT: "900"
     depends_on:
       postgres:
         condition: service_healthy
