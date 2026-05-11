@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,8 +9,11 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://douyin:douyin@localhost:5432/textloading_app"
     redis_url: str = "redis://localhost:6379/2"
-    #: 共用 Redis 实例时的 key 前缀（统一基建约定 textloading 使用 tl:）
-    redis_key_prefix: str = ""
+    #: 共用 Redis 实例时的 key 前缀（与 Ab 的 REDIS_PREFIX 同角色；可读 REDIS_KEY_PREFIX 或 REDIS_PREFIX）
+    redis_key_prefix: str = Field(
+        default="",
+        validation_alias=AliasChoices("REDIS_KEY_PREFIX", "REDIS_PREFIX"),
+    )
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

@@ -43,6 +43,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./deploy/textloading.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command:
       - sh
       - -c
@@ -63,6 +65,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./deploy/textloading.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: arq app.workers.settings.WorkerSettings
     depends_on:
       postgres:
