@@ -31,8 +31,9 @@ services:
     build:
       context: ./bridge
       dockerfile: Dockerfile
+    # 宿主机端口勿与同机 MinIO（常见 19000/19001）等冲突；API/worker 仍通过服务名 bridge:9000 访问，无需改 DOUYIN_HTTP_*
     ports:
-      - "19000:9000"
+      - "19190:9000"
     environment:
       # 默认单实例 Evil0ctal（宿主机 :19001）。需双 Cookie 轮询时再设置 UPSTREAM_BASE_URLS（见 bridge/README.md）
       UPSTREAM_BASE_URL: "http://host.docker.internal:19001"
