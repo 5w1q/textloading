@@ -1,3 +1,4 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-httpx==0.28.1
+# 部分镜像站同步滞后时 pin 过新会报 “versions: none”；允许 0.27.x / 0.28.x
+httpx>=0.27.0,<0.29
