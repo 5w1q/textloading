@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '../api/client'
 
@@ -9,6 +9,8 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+
+const sessionExpiredHint = computed(() => route.query.expired === '1')
 
 async function submit() {
   error.value = ''
@@ -36,6 +38,10 @@ async function submit() {
       <form class="form" @submit.prevent="submit">
         <h1 class="title">登录</h1>
         <p class="subtitle">使用已注册邮箱进入工作台</p>
+
+        <p v-if="sessionExpiredHint" class="session-expired" role="status">
+          登录已失效（例如服务端数据已重置）。请重新登录或注册。
+        </p>
 
         <div class="form-container">
           <label class="sr-only" for="login-email">邮箱</label>
@@ -202,6 +208,18 @@ async function submit() {
 .form button:focus-visible {
   outline: 2px solid #005ce6;
   outline-offset: 3px;
+}
+
+.session-expired {
+  margin: -4px 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  color: #854d0e;
+  font-size: 0.8125rem;
+  text-align: left;
+  line-height: 1.45;
 }
 
 .error {

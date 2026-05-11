@@ -53,11 +53,3 @@ async def init_db() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_user_videos_source_task_id ON user_videos (source_task_id);"
                 )
             )
-            await conn.execute(
-                text(
-                    """
-                    ALTER TABLE sync_tasks
-                    ADD COLUMN IF NOT EXISTS charged_at TIMESTAMPTZ NULL;
-                    """
-                )
-            )

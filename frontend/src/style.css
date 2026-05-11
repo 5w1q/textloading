@@ -1,14 +1,7 @@
-/* App-wide tokens (ui-ux-pro-max: SaaS dashboard, blue + slate). */
+/* App-wide tokens (ui-ux-pro-max: SaaS dashboard, blue + slate). Fonts loaded in index.html. */
 :root {
-  --font-latin: 'Inter', 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --font-cjk: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
-  --font-sans:
-    var(--font-latin),
-    var(--font-cjk),
-    -apple-system,
-    system-ui,
-    sans-serif;
-  --font-mono: 'Cascadia Mono', 'JetBrains Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace;
+  --font-sans: 'Fira Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, Consolas, monospace;
 
   --color-bg: #f8fafc;
   --color-surface: #ffffff;
@@ -56,26 +49,8 @@ body {
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  text-rendering: optimizeLegibility;
-  font-feature-settings: 'kern' 1, 'liga' 1;
   color: var(--color-text);
   background: var(--color-bg);
-}
-
-h1,
-h2,
-h3 {
-  letter-spacing: 0.0125em;
-}
-
-button,
-input,
-select,
-textarea {
-  font-family: var(--font-sans);
-  letter-spacing: 0.01em;
 }
 
 #app {

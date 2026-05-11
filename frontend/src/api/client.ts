@@ -4,19 +4,43 @@ const baseURL = import.meta.env.VITE_API_BASE || ''
 
 export const api = axios.create({
   baseURL,
-  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })
 
-export function currentNextPath(): string {
-  return window.location.pathname + window.location.search + window.location.hash
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+/** 登录 / 注册失败的 401 不应清 token、不应整页跳转，以免盖住表单错误提示 */
+function isAuthSubmitUrl(url: string | undefined): boolean {
+  if (!url) return false
+  return url.includes('/auth/login') || url.includes('/auth/register')
 }
 
-export function goToAbLogin(mode: 'login' | 'register' = 'login') {
-  const endpoint = mode === 'register' ? '/auth/register' : '/auth/login'
-  const next = encodeURIComponent(currentNextPath())
-  window.location.href = `${baseURL}${endpoint}?next=${next}`
-}
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      return Promise.reject(error)
+    }
+    if (isAuthSubmitUrl(error.config?.url)) {
+      return Promise.reject(error)
+    }
+    localStorage.removeItem('access_token')
+    const path = window.location.pathname
+    if (path.endsWith('/login') || path.endsWith('/register')) {
+      return Promise.reject(error)
+    }
+    const rawBase = import.meta.env.BASE_URL || '/'
+    const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase
+    window.location.assign(`${base}/login?expired=1`)
+    return Promise.reject(error)
+  },
+)
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'partial' | 'failed'
 
@@ -51,4 +75,9 @@ export interface VideosSummary {
 export interface UniqueIdRow {
   unique_id: string
   video_count: number
+}
+
+export interface DeleteIdentifierResult {
+  deleted_videos: number
+  deleted_tasks: number
 }

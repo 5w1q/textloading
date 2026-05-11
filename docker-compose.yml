@@ -33,8 +33,8 @@ services:
     ports:
       - "19000:9000"
     environment:
-      # 双 Evil0ctal 轮询：:19001（douyin_upstream）与 :19002（douyin_upstream_b），各挂载不同 Cookie
-      UPSTREAM_BASE_URLS: "http://host.docker.internal:19001,http://host.docker.internal:19002"
+      # 默认单实例 Evil0ctal（宿主机 :19001）。需双 Cookie 轮询时再设置 UPSTREAM_BASE_URLS（见 bridge/README.md）
+      UPSTREAM_BASE_URL: "http://host.docker.internal:19001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -55,17 +55,11 @@ services:
       DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
       DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
       CORS_ORIGINS: http://localhost:5174,http://127.0.0.1:5174
-      AB_BASE_URL: http://host.docker.internal:3847
-      AB_LOGIN_PATH: /login.html
-      AB_APP_ID: textloading
-      AB_CREDITS_COST_SYNC: "3"
       UVICORN_WORKERS: "2"
       DB_POOL_SIZE: "10"
       DB_MAX_OVERFLOW: "30"
       RATE_LIMIT_SYNC_PER_USER_PER_MINUTE: "30"
       DOUYIN_FETCH_MAX_CONCURRENT: "8"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "18080:8000"
     depends_on:
@@ -88,10 +82,6 @@ services:
       DOUYIN_ADAPTER: http
       DOUYIN_HTTP_RESOLVE_URL: http://bridge:9000/douyin/resolve?unique_id={unique_id}
       DOUYIN_HTTP_FEED_URL: http://bridge:9000/douyin/feed?sec_uid={sec_uid}&cursor={cursor}
-      AB_BASE_URL: http://host.docker.internal:3847
-      AB_LOGIN_PATH: /login.html
-      AB_APP_ID: textloading
-      AB_CREDITS_COST_SYNC: "3"
       # bridge/上游偶发 502 时 Worker 内对单次 GET 重试（见 app/adapters/http_proxy.py）
       DOUYIN_HTTP_MAX_ATTEMPTS: "5"
       DOUYIN_HTTP_RETRY_BACKOFF_BASE: "0.5"
@@ -100,8 +90,6 @@ services:
       DOUYIN_FETCH_MAX_CONCURRENT: "8"
       WORKER_MAX_JOBS: "8"
       WORKER_JOB_TIMEOUT: "900"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

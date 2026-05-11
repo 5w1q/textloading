@@ -7,13 +7,19 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from openpyxl import Workbook
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.deps import get_current_user
 from app.models import SyncTask, TaskStatus, User, UserVideo
-from app.schemas import UniqueIdRowPublic, UserVideoPublic, VideoCountPublic, VideosSummaryPublic
+from app.schemas import (
+    DeleteIdentifierResultPublic,
+    UniqueIdRowPublic,
+    UserVideoPublic,
+    VideoCountPublic,
+    VideosSummaryPublic,
+)
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
@@ -192,3 +198,31 @@ async def list_my_videos(
     q = q.order_by(UserVideo.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(q)
     return list(result.scalars().all())
+
+
+@router.delete("", response_model=DeleteIdentifierResultPublic)
+async def delete_my_data_for_unique_id(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+    unique_id: str = Query(..., min_length=1, max_length=128, description="要清空的用户标识"),
+) -> DeleteIdentifierResultPublic:
+    """删除当前账号内：该用户标识下的全部已采链接，及与此标识相关的全部同步任务记录（不含全局 unique_id_mappings）。"""
+    uid = unique_id.strip()
+    active = await session.execute(
+        select(SyncTask.id).where(
+            SyncTask.user_id == user.id,
+            SyncTask.unique_id == uid,
+            SyncTask.status.in_((TaskStatus.pending, TaskStatus.running)),
+        ).limit(1)
+    )
+    if active.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该用户标识有进行中的同步任务，请等待结束后再删除",
+        )
+    r1 = await session.execute(delete(UserVideo).where(UserVideo.user_id == user.id, UserVideo.unique_id == uid))
+    dv = int(r1.rowcount or 0)
+    r2 = await session.execute(delete(SyncTask).where(SyncTask.user_id == user.id, SyncTask.unique_id == uid))
+    dt = int(r2.rowcount or 0)
+    await session.commit()
+    return DeleteIdentifierResultPublic(deleted_videos=dv, deleted_tasks=dt)

@@ -1,31 +1,31 @@
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ab_client import build_ab_login_url, get_ab_user_from_request, proxy_ab_logout
-from app.deps import get_current_user
+from app import auth as auth_service
+from app.auth import create_access_token
+from app.db import get_session
 from app.models import User
+from app.schemas import TokenResponse, UserCreate, UserLogin, UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.get("/login")
-async def login_redirect(next: str = "/"):
-    return RedirectResponse(url=build_ab_login_url(next_url=next, mode="login"), status_code=307)
+@router.post("/register", response_model=UserPublic)
+async def register(body: UserCreate, session: AsyncSession = Depends(get_session)) -> User:
+    existing = await auth_service.get_user_by_email(session, body.email)
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    user = User(email=body.email, hashed_password=auth_service.hash_password(body.password))
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
 
 
-@router.get("/register")
-async def register_redirect(next: str = "/"):
-    return RedirectResponse(url=build_ab_login_url(next_url=next, mode="register"), status_code=307)
-
-
-@router.get("/me")
-async def get_me(request: Request, _: User = Depends(get_current_user)):
-    # 复用主站会话信息，前端用于路由守卫
-    me = await get_ab_user_from_request(request)
-    return {"success": True, "data": me}
-
-
-@router.post("/logout")
-async def logout(request: Request):
-    await proxy_ab_logout(request)
-    return {"success": True}
+@router.post("/login", response_model=TokenResponse)
+async def login(body: UserLogin, session: AsyncSession = Depends(get_session)) -> TokenResponse:
+    user = await auth_service.get_user_by_email(session, body.email)
+    if user is None or not auth_service.verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    token = create_access_token(user.id)
+    return TokenResponse(access_token=token)

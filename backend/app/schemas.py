@@ -9,7 +9,6 @@ from app.models import TaskStatus
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user_id: int | None = None
 
 
 class UserCreate(BaseModel):
@@ -41,7 +40,6 @@ class SyncTaskPublic(BaseModel):
     status: TaskStatus
     error_message: str | None
     new_links_count: int
-    charged_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -82,3 +80,10 @@ class TaskCountPublic(BaseModel):
     """当前登录用户下的同步任务总条数（用于分页）。"""
 
     total: int
+
+
+class DeleteIdentifierResultPublic(BaseModel):
+    """删除某用户标识下在本账号内的采集链接与同步任务记录（不影响全局 unique→sec_uid 映射表）。"""
+
+    deleted_videos: int
+    deleted_tasks: int
