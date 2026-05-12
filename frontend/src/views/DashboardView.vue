@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { useRouter } from 'vue-router'
 import {
   api,
+  type AuthMeUser,
   type DeleteIdentifierResult,
   type SyncTask,
   type TaskStatus,
@@ -44,6 +45,9 @@ const feedback = ref<{ type: FeedbackType; text: string } | null>(null)
 const deletingTaskId = ref<string | null>(null)
 const deletingIdentifier = ref(false)
 
+/** 当前登录用户（Ab Cookie / Bearer）；来自 GET /auth/me */
+const currentUser = ref<AuthMeUser | null>(null)
+
 /** 任务列表时间：日期 + 时:分（不显示秒） */
 function formatTaskCreatedAt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -66,6 +70,15 @@ async function loadPublicConfig() {
     demoExplain.value = data.demo_explain || ''
   } catch {
     demoMode.value = false
+  }
+}
+
+async function loadMe() {
+  try {
+    const { data } = await api.get<AuthMeUser>('/auth/me')
+    currentUser.value = data
+  } catch {
+    currentUser.value = null
   }
 }
 
@@ -552,6 +565,7 @@ const feedbackClass = computed(() => {
 
 onMounted(() => {
   void loadPublicConfig()
+  void loadMe()
   void refresh({ quiet: true })
 })
 </script>
@@ -561,7 +575,15 @@ onMounted(() => {
     <main class="main">
       <div class="main-toolbar">
         <h1 class="main-toolbar__title">抖音主页链接同步</h1>
-        <button type="button" class="btn btn--ghost btn--toolbar" @click="logout">
+        <div class="main-toolbar__actions">
+          <span
+            v-if="currentUser"
+            class="main-toolbar__user"
+            :title="currentUser.email"
+          >
+            {{ currentUser.email }}
+          </span>
+          <button type="button" class="btn btn--ghost btn--toolbar" @click="logout">
           <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M10 17H5V7h5M14 7h5v10h-5M10 12h8"
@@ -573,6 +595,7 @@ onMounted(() => {
           </svg>
           退出
         </button>
+        </div>
       </div>
 
       <div v-if="demoMode" class="banner-demo" role="alert">
@@ -897,6 +920,22 @@ onMounted(() => {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--color-text);
+}
+
+.main-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.main-toolbar__user {
+  font-size: 0.875rem;
+  color: #64748b;
+  max-width: min(14rem, 40vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn--toolbar {

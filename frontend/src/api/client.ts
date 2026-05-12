@@ -16,6 +16,52 @@ export function buildAbLoginRedirectUrl(redirectAfterLogin: string): string {
   return `${ab}${AB_LOGIN_PATH}?redirect=${encodeURIComponent(redirectAfterLogin)}`
 }
 
+function joinHubBaseAndPath(baseWithoutTrailingSlash: string, path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`
+  if (!baseWithoutTrailingSlash) return p
+  return `${baseWithoutTrailingSlash}${p}`
+}
+
+/**
+ * Ab 登录成功后回到 Hub 的完整 URL（写入 login.html 的 redirect）。
+ * 仅允许同源相对路径或同源绝对 URL，避免开放重定向。
+ */
+export function resolveHubReturnUrl(redirectParam: unknown): string {
+  const rawBase = import.meta.env.BASE_URL || '/'
+  const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase
+  const origin = window.location.origin
+
+  const raw = Array.isArray(redirectParam) ? redirectParam[0] : redirectParam
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return `${origin}${joinHubBaseAndPath(base, '/')}`
+  }
+
+  let decoded = raw.trim()
+  try {
+    decoded = decodeURIComponent(decoded)
+  } catch {
+    // 保持原样
+  }
+
+  if (/^https?:\/\//i.test(decoded)) {
+    try {
+      const u = new URL(decoded)
+      if (u.origin === origin) {
+        return decoded
+      }
+    } catch {
+      /* fallthrough */
+    }
+    return `${origin}${joinHubBaseAndPath(base, '/')}`
+  }
+
+  if (!decoded.startsWith('/') || decoded.startsWith('//')) {
+    return `${origin}${joinHubBaseAndPath(base, '/')}`
+  }
+
+  return `${origin}${joinHubBaseAndPath(base, decoded)}`
+}
+
 function abLoginUrl(): string {
   return buildAbLoginRedirectUrl(window.location.href)
 }
@@ -62,6 +108,12 @@ api.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+export interface AuthMeUser {
+  id: number
+  /** 与 Ab 对齐时为邮箱或用户名（本站 users.email） */
+  email: string
+}
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'partial' | 'failed'
 

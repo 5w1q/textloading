@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis_async
@@ -13,13 +14,28 @@ from app.routers import auth, tasks, videos
 
 settings = get_settings()
 
+_log = logging.getLogger("uvicorn.error")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    app.state.redis_cli = redis_async.from_url(settings.redis_url, decode_responses=True)
-    await init_douyin_permit_pool(app.state.redis_cli, settings.douyin_fetch_max_concurrent)
-    app.state.redis_pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+    try:
+        _log.info("lifespan: connecting DB (init_db) …")
+        await init_db()
+        _log.info("lifespan: init_db OK")
+
+        _log.info("lifespan: Redis client …")
+        app.state.redis_cli = redis_async.from_url(settings.redis_url, decode_responses=True)
+
+        _log.info("lifespan: douyin permit pool …")
+        await init_douyin_permit_pool(app.state.redis_cli, settings.douyin_fetch_max_concurrent)
+
+        _log.info("lifespan: arq pool …")
+        app.state.redis_pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+        _log.info("lifespan: startup complete")
+    except Exception:
+        _log.exception("lifespan: startup failed")
+        raise
     yield
     await app.state.redis_pool.close(close_connection_pool=True)
     await app.state.redis_cli.aclose()
