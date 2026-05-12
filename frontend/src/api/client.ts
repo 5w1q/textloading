@@ -17,10 +17,11 @@ export function buildAbLoginRedirectUrl(redirectAfterLogin: string): string {
   return `${ab}${AB_LOGIN_PATH}?redirect=${encodeURIComponent(redirectAfterLogin)}`
 }
 
-/** Ab 登录页 URL（无 redirect 参数），退出账号时使用 */
+/** Ab 登录页 URL（退出后使用）；带 noredirect=1 防止 login.html 因 Cookie 仍在而立刻跳回首页 */
 export function abLoginPageOnlyUrl(): string {
   const ab = String(import.meta.env.VITE_AB_ORIGIN || 'https://sayhi-ab.asia').replace(/\/$/, '')
-  return `${ab}${AB_LOGIN_PATH}`
+  const join = AB_LOGIN_PATH.includes('?') ? '&' : '?'
+  return `${ab}${AB_LOGIN_PATH}${join}noredirect=1`
 }
 
 function joinHubBaseAndPath(baseWithoutTrailingSlash: string, path: string): string {
@@ -87,6 +88,12 @@ function isAuthSubmitUrl(url: string | undefined): boolean {
   return url.includes('/auth/login') || url.includes('/auth/register')
 }
 
+/** Ab 代理登出返回 401 时不应跳转「带 redirect 的登录页」，否则会覆盖退出逻辑里的 `noredirect=1`。 */
+function isAbLogoutUrl(url: string | undefined): boolean {
+  if (!url) return false
+  return url.includes('/auth/ab-logout')
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -94,7 +101,7 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
     if (import.meta.env.VITE_USE_AB_LOGIN !== '0') {
-      if (isAuthSubmitUrl(error.config?.url)) {
+      if (isAuthSubmitUrl(error.config?.url) || isAbLogoutUrl(error.config?.url)) {
         return Promise.reject(error)
       }
       localStorage.removeItem('access_token')
