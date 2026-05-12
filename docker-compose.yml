@@ -38,6 +38,19 @@ services:
       - "19190:9000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=4).read()",
+        ]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 40s
 
   api:
     build:
@@ -53,13 +66,26 @@ services:
       - uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers $${UVICORN_WORKERS:-2}
     ports:
       - "18180:8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).read()",
+        ]
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       bridge:
-        condition: service_started
+        condition: service_healthy
 
   worker:
     build:
@@ -70,13 +96,14 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: arq app.workers.settings.WorkerSettings
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       bridge:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   pg_data:
