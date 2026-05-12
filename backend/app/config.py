@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     #: 与 Ab 统一登录时须与 Ab 的 JWT_SECRET 完全一致；浏览器可带 Ab 的 httpOnly Cookie（默认名 ab_token）
     ab_auth_cookie_name: str = "ab_token"
+    #: Ab 主站 HTTPS 根 URL（API 容器内需能访问，用于同步资料 / 代理登出）
+    ab_origin: str = Field(default="https://sayhi-ab.asia", validation_alias=AliasChoices("AB_ORIGIN"))
+    ab_upstream_timeout_seconds: float = 10.0
 
     cors_origins: str = "http://localhost:5174,http://127.0.0.1:5174"
 

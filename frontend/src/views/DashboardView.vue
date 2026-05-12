@@ -546,11 +546,16 @@ async function deleteSelectedIdentifierData() {
   }
 }
 
-function logout() {
+async function logout() {
   localStorage.removeItem('access_token')
   if (import.meta.env.VITE_USE_AB_LOGIN === '0') {
     void router.push('/login')
     return
+  }
+  try {
+    await api.post('/auth/ab-logout')
+  } catch {
+    /* Ab 不可达时仍会跳转登录页；若 Cookie 未清掉需检查 API 出网与 AB_ORIGIN */
   }
   window.location.href = abLoginPageOnlyUrl()
 }
