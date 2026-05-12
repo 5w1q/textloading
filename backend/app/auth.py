@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -29,15 +30,52 @@ def create_access_token(user_id: int) -> str:
     )
 
 
-def decode_user_id(token: str) -> int | None:
+def decode_access_token_payload(token: str) -> dict | None:
+    """校验 JWT，返回 payload（Ab：id/email/username；本站旧 token：sub）。"""
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        sub = payload.get("sub")
-        if sub is None:
-            return None
-        return int(sub)
-    except (JWTError, ValueError):
+        return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except JWTError:
         return None
+
+
+def decode_user_id(token: str) -> int | None:
+    payload = decode_access_token_payload(token)
+    if payload is None:
+        return None
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (TypeError, ValueError):
+        return None
+
+
+async def get_or_create_user_by_email(session: AsyncSession, email: str) -> User:
+    norm = email.strip()
+    existing = await get_user_by_email(session, norm)
+    if existing is not None:
+        return existing
+    user = User(email=norm, hashed_password=hash_password(secrets.token_urlsafe(32)))
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def resolve_user_from_token_payload(session: AsyncSession, payload: dict) -> User | None:
+    """Ab JWT 含 email/username；本站自建 JWT 仅含 sub。"""
+    email_or_login = payload.get("email") or payload.get("username")
+    if email_or_login:
+        return await get_or_create_user_by_email(session, str(email_or_login))
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        uid = int(sub)
+    except (TypeError, ValueError):
+        return None
+    return await get_user_by_id(session, uid)
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:

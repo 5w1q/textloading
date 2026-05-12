@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { api } from '../api/client'
+import { api, buildAbLoginRedirectUrl } from '../api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,6 +11,14 @@ const error = ref('')
 const loading = ref(false)
 
 const sessionExpiredHint = computed(() => route.query.expired === '1')
+
+onMounted(() => {
+  if (import.meta.env.VITE_USE_AB_LOGIN === '0') return
+  const rawBase = import.meta.env.BASE_URL || '/'
+  const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase
+  const target = `${window.location.origin}${base}/`
+  window.location.replace(buildAbLoginRedirectUrl(target))
+})
 
 async function submit() {
   error.value = ''

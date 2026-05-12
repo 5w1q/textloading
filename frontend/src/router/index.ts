@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import { api, buildAbLoginRedirectUrl } from '../api/client'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,12 +13,20 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  const token = localStorage.getItem('access_token')
-  if (to.meta.requiresAuth && !token) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) return true
+  if (import.meta.env.VITE_USE_AB_LOGIN === '0') {
+    const token = localStorage.getItem('access_token')
+    if (!token) return { name: 'login', query: { redirect: to.fullPath } }
+    return true
   }
-  return true
+  try {
+    await api.get('/auth/me')
+    return true
+  } catch {
+    window.location.href = buildAbLoginRedirectUrl(window.location.href)
+    return false
+  }
 })
 
 export default router

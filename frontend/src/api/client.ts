@@ -5,7 +5,20 @@ const baseURL = import.meta.env.VITE_API_BASE || ''
 export const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
+
+/** Ab 主站登录/注册页（与 sayhi-ab.asia 实际路由一致） */
+export const AB_LOGIN_PATH = '/login.html'
+
+export function buildAbLoginRedirectUrl(redirectAfterLogin: string): string {
+  const ab = String(import.meta.env.VITE_AB_ORIGIN || 'https://sayhi-ab.asia').replace(/\/$/, '')
+  return `${ab}${AB_LOGIN_PATH}?redirect=${encodeURIComponent(redirectAfterLogin)}`
+}
+
+function abLoginUrl(): string {
+  return buildAbLoginRedirectUrl(window.location.href)
+}
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
@@ -25,6 +38,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      return Promise.reject(error)
+    }
+    if (import.meta.env.VITE_USE_AB_LOGIN !== '0') {
+      if (isAuthSubmitUrl(error.config?.url)) {
+        return Promise.reject(error)
+      }
+      localStorage.removeItem('access_token')
+      window.location.assign(abLoginUrl())
       return Promise.reject(error)
     }
     if (isAuthSubmitUrl(error.config?.url)) {

@@ -30,7 +30,8 @@
   **命令：** `sudo ufw status verbose`
 
 - [ ] **B2** —（若尚未添加）Docker 网段访问宿主 Postgres：`172.20.0.0/16 -> 5432`  
-  **命令：** `sudo ufw status | grep -q '172.20.0.0/16.*5432' || sudo ufw allow from 172.20.0.0/16 to any port 5432 proto tcp comment 'docker textloading pg'`
+  **命令：** `sudo ufw status | grep -F '172.20.0.0/16' | grep -q '5432' || sudo ufw allow from 172.20.0.0/16 to any port 5432 proto tcp comment 'docker textloading pg'`  
+  （`ufw status` 通常为「端口在前」，不能用 `172.20.*5432` 顺序去 grep。）
 
 - [ ] **B3** —（仅当 `REDIS_URL` 仍指向宿主时才需要）`172.20.0.0/16 -> 6379`  
   **命令：** `grep -q '^REDIS_URL=redis://redis:' /etc/textloading/textloading.env && echo 'Redis 已走 compose，跳过 B3' || sudo ufw allow from 172.20.0.0/16 to any port 6379 proto tcp comment 'docker textloading redis'`

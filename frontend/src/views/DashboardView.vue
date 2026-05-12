@@ -534,7 +534,12 @@ async function deleteSelectedIdentifierData() {
 
 function logout() {
   localStorage.removeItem('access_token')
-  void router.push('/login')
+  if (import.meta.env.VITE_USE_AB_LOGIN === '0') {
+    void router.push('/login')
+    return
+  }
+  const ab = String(import.meta.env.VITE_AB_ORIGIN || 'https://sayhi-ab.asia').replace(/\/$/, '')
+  window.location.href = ab
 }
 
 const feedbackClass = computed(() => {

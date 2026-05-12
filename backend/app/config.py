@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
 
+    #: 与 Ab 统一登录时须与 Ab 的 JWT_SECRET 完全一致；浏览器可带 Ab 的 httpOnly Cookie（默认名 ab_token）
+    ab_auth_cookie_name: str = "ab_token"
+
     cors_origins: str = "http://localhost:5174,http://127.0.0.1:5174"
 
     douyin_adapter: str = "mock"

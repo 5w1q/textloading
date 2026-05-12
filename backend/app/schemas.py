@@ -23,7 +23,8 @@ class UserLogin(BaseModel):
 
 class UserPublic(BaseModel):
     id: int
-    email: EmailStr
+    #: 与 Ab 对齐时可能为邮箱或登录名（username）
+    email: str
 
     model_config = {"from_attributes": True}
 

@@ -4,10 +4,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import auth as auth_service
 from app.auth import create_access_token
 from app.db import get_session
+from app.deps import get_current_user
 from app.models import User
 from app.schemas import TokenResponse, UserCreate, UserLogin, UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/me", response_model=UserPublic)
+async def me(current: User = Depends(get_current_user)) -> User:
+    """供前端路由守卫校验：Bearer 或 Ab Cookie「ab_token」。"""
+    return current
 
 
 @router.post("/register", response_model=UserPublic)
