@@ -17,6 +17,12 @@ export function buildAbLoginRedirectUrl(redirectAfterLogin: string): string {
   return `${ab}${AB_LOGIN_PATH}?redirect=${encodeURIComponent(redirectAfterLogin)}`
 }
 
+/** Ab 登录页 URL（无 redirect 参数），退出账号时使用 */
+export function abLoginPageOnlyUrl(): string {
+  const ab = String(import.meta.env.VITE_AB_ORIGIN || 'https://sayhi-ab.asia').replace(/\/$/, '')
+  return `${ab}${AB_LOGIN_PATH}`
+}
+
 function joinHubBaseAndPath(baseWithoutTrailingSlash: string, path: string): string {
   const p = path.startsWith('/') ? path : `/${path}`
   if (!baseWithoutTrailingSlash) return p
@@ -112,8 +118,13 @@ api.interceptors.response.use(
 
 export interface AuthMeUser {
   id: number
-  /** 与 Ab 对齐时为邮箱或用户名（本站 users.email） */
+  /** 本站存储的登录标识（邮箱或用户名） */
   email: string
+  /** 展示名：优先 Ab 自定义昵称；无则用邮箱 */
+  display_name: string
+  is_vip: boolean
+  /** Ab JWT 未携带时为 null */
+  points_remaining: number | null
 }
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'partial' | 'failed'

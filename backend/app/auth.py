@@ -63,6 +63,69 @@ async def get_or_create_user_by_email(session: AsyncSession, email: str) -> User
     return user
 
 
+def ab_profile_from_claims(payload: dict, fallback_email: str) -> dict:
+    """从 Ab JWT 里尽量取出展示用字段；字段名多种写法兼容，缺失则用默认值。"""
+    flat = dict(payload)
+    nested = payload.get("user")
+    if isinstance(nested, dict):
+        for k, v in nested.items():
+            flat.setdefault(k, v)
+
+    email = (fallback_email or "").strip()
+
+    display = ""
+    for key in ("nickname", "nick_name", "custom_username", "display_name", "name"):
+        raw = flat.get(key)
+        if isinstance(raw, str) and raw.strip():
+            display = raw.strip()
+            break
+    if not display:
+        pe = flat.get("email")
+        if isinstance(pe, str) and pe.strip():
+            display = pe.strip()
+    if not display:
+        display = email
+
+    is_vip = False
+    for key in ("is_vip", "vip"):
+        raw = flat.get(key)
+        if isinstance(raw, bool):
+            is_vip = raw
+            break
+        if isinstance(raw, (int, float)):
+            is_vip = raw != 0
+            break
+        if isinstance(raw, str) and raw.strip().lower() in ("1", "true", "yes", "vip"):
+            is_vip = True
+            break
+    if not is_vip:
+        vl = flat.get("vip_level")
+        if isinstance(vl, (int, float)):
+            is_vip = vl > 0
+        elif isinstance(vl, str) and vl.strip().isdigit():
+            is_vip = int(vl.strip()) > 0
+
+    points_remaining: int | None = None
+    for key in ("points", "credits", "balance", "score", "remaining_points", "points_remaining"):
+        raw = flat.get(key)
+        if isinstance(raw, bool):
+            continue
+        if isinstance(raw, (int, float)):
+            points_remaining = int(raw)
+            break
+        if isinstance(raw, str):
+            s = raw.strip()
+            if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
+                points_remaining = int(s)
+                break
+
+    return {
+        "display_name": display,
+        "is_vip": is_vip,
+        "points_remaining": points_remaining,
+    }
+
+
 async def resolve_user_from_token_payload(session: AsyncSession, payload: dict) -> User | None:
     """Ab JWT 含 email/username；本站自建 JWT 仅含 sub。"""
     email_or_login = payload.get("email") or payload.get("username")

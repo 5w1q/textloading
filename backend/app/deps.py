@@ -28,6 +28,8 @@ async def get_current_user(
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
+    request.state.jwt_payload = payload
+
     user = await auth_service.resolve_user_from_token_payload(session, payload)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")

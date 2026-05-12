@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { useRouter } from 'vue-router'
 import {
   api,
+  abLoginPageOnlyUrl,
   type AuthMeUser,
   type DeleteIdentifierResult,
   type SyncTask,
@@ -551,8 +552,7 @@ function logout() {
     void router.push('/login')
     return
   }
-  const ab = String(import.meta.env.VITE_AB_ORIGIN || 'https://sayhi-ab.asia').replace(/\/$/, '')
-  window.location.href = ab
+  window.location.href = abLoginPageOnlyUrl()
 }
 
 const feedbackClass = computed(() => {
@@ -561,6 +561,12 @@ const feedbackClass = computed(() => {
   if (t === 'error') return 'feedback feedback--error'
   if (t === 'warn') return 'feedback feedback--warn'
   return 'feedback feedback--info'
+})
+
+const mePointsLabel = computed(() => {
+  const p = currentUser.value?.points_remaining
+  if (p === null || p === undefined) return '—'
+  return String(p)
 })
 
 onMounted(() => {
@@ -576,13 +582,20 @@ onMounted(() => {
       <div class="main-toolbar">
         <h1 class="main-toolbar__title">抖音主页链接同步</h1>
         <div class="main-toolbar__actions">
-          <span
+          <div
             v-if="currentUser"
-            class="main-toolbar__user"
+            class="main-toolbar__userblock"
             :title="currentUser.email"
           >
-            {{ currentUser.email }}
-          </span>
+            <span class="main-toolbar__display">{{ currentUser.display_name }}</span>
+            <span
+              class="main-toolbar__badge"
+              :class="currentUser.is_vip ? 'main-toolbar__badge--vip' : 'main-toolbar__badge--norm'"
+            >
+              {{ currentUser.is_vip ? 'VIP' : '普通' }}
+            </span>
+            <span class="main-toolbar__meta">积分 {{ mePointsLabel }}</span>
+          </div>
           <button type="button" class="btn btn--ghost btn--toolbar" @click="logout">
           <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -929,12 +942,48 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.main-toolbar__user {
+.main-toolbar__userblock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  max-width: min(22rem, 55vw);
+}
+
+.main-toolbar__display {
   font-size: 0.875rem;
-  color: #64748b;
-  max-width: min(14rem, 40vw);
+  font-weight: 600;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 11rem;
+}
+
+.main-toolbar__badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.main-toolbar__badge--vip {
+  color: #7c2d12;
+  background: linear-gradient(135deg, #fde68a, #fbbf24);
+  border: 1px solid rgba(180, 83, 9, 0.35);
+}
+
+.main-toolbar__badge--norm {
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid var(--color-border);
+}
+
+.main-toolbar__meta {
+  font-size: 0.8125rem;
+  color: #64748b;
   white-space: nowrap;
 }
 

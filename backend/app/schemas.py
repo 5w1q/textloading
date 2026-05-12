@@ -29,6 +29,18 @@ class UserPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AuthMePublic(BaseModel):
+    """GET /auth/me：本站用户 id + Ab JWT 中的展示信息（若有）。"""
+
+    id: int
+    email: str
+    #: 优先 JWT 内自定义昵称等；无则用邮箱
+    display_name: str
+    is_vip: bool = False
+    #: Ab JWT 未带积分字段时为 null
+    points_remaining: int | None = None
+
+
 class SyncTaskCreate(BaseModel):
     unique_id: str = Field(..., min_length=1, max_length=128, description="抖音号，例如 y096031")
 
