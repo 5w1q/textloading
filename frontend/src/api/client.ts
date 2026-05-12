@@ -6,6 +6,7 @@ export const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
+  timeout: 25_000,
 })
 
 /** Ab 主站登录/注册页（与 sayhi-ab.asia 实际路由一致） */
